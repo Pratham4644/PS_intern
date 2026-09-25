@@ -756,23 +756,39 @@
 
 
 
-
-
-
 import time
 import base64
 from urllib.request import Request, urlopen
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 # SINGLE GLOBAL APP INSTANCE
 app = FastAPI(title="AI CCTV Platform", version="0.1.0")
 
+# ============================================================
+# CROSS-ORIGIN RESOURCE SHARING (CORS) MIDDLEWARE
+# ============================================================
+# This explicitly permits your Render app and browsers to communicate
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================================
+# CAMERA HARDWARE CONFIGURATION
+# ============================================================
 CAMERA_IP = "10.226.35.77"
 CAMERA_PORT = 8080
 CAMERA_USERNAME = "hello"
 CAMERA_PASSWORD = "Pratham@123"
 CAMERA_URL = f"http://{CAMERA_IP}:{CAMERA_PORT}/video"
+
+# REPLACE THIS WITH YOUR LIVE CLOUDFLARE TUNNEL URL BEFORE PUSHING
+CLOUDFLARE_TUNNEL_URL = "https://trycloudflare.com"
 
 CAMERAS = {
     "cam1": {
@@ -811,7 +827,9 @@ def video():
             },
         )
         camera = urlopen(request, timeout=10)
-        content_type = camera.headers.get("Content-Type")
+        
+        # Safe fallback header matching if content type is empty
+        content_type = camera.headers.get("Content-Type") or "multipart/x-mixed-replace; boundary=frame"
         print("Camera Content-Type:", content_type)
 
         def generate():
@@ -835,6 +853,7 @@ def video():
                 "Pragma": "no-cache",
                 "Expires": "0",
                 "X-Accel-Buffering": "no",
+                "Access-Control-Allow-Origin": "*",
             },
         )
     except Exception as error:
@@ -846,7 +865,8 @@ def video():
 # ============================================================
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return """
+    # Injected the real-time Cloudflare Tunnel link directly into the img src block
+    return f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -854,16 +874,16 @@ def home():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>CCTV Live Feed</title>
         <style>
-            body { margin: 0; background: #111; color: white; font-family: Arial; text-align: center; }
-            h1 { margin: 20px; }
-            .status { color: #00ff88; margin-bottom: 15px; }
-            img { width: 800px; max-width: 95vw; border-radius: 8px; }
+            body {{ margin: 0; background: #111; color: white; font-family: Arial; text-align: center; }}
+            h1 {{ margin: 20px; }}
+            .status {{ color: #00ff88; margin-bottom: 15px; }}
+            img {{ width: 800px; max-width: 95vw; border-radius: 8px; border: 2px solid #333; }}
         </style>
     </head>
     <body>
         <h1>CCTV Live Feed</h1>
         <div class="status">● LIVE</div>
-        <img src="/video">
+        <img src="{CLOUDFLARE_TUNNEL_URL}/video" alt="CCTV Live Video Feed Stream">
     </body>
     </html>
     """
@@ -884,14 +904,14 @@ def get_cameras():
         "cameras": list(CAMERAS.values())
     }
 
-@app.get("/api/cameras/{camera_id}")
+@app.get("/api/cameras/{{camera_id}}")
 def get_camera(camera_id: str):
     camera = CAMERAS.get(camera_id)
     if camera is None:
         raise HTTPException(status_code=404, detail="Camera not found")
     return camera
 
-@app.get("/api/cameras/{camera_id}/stream")
+@app.get("/api/cameras/{{camera_id}}/stream")
 def get_camera_stream(camera_id: str):
     camera = CAMERAS.get(camera_id)
     if camera is None:

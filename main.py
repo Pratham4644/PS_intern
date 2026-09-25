@@ -788,7 +788,8 @@ CAMERA_PASSWORD = "Pratham@123"
 CAMERA_URL = f"http://{CAMERA_IP}:{CAMERA_PORT}/video"
 
 # REPLACE THIS WITH YOUR LIVE CLOUDFLARE TUNNEL URL BEFORE PUSHING
-CLOUDFLARE_TUNNEL_URL = "https://trycloudflare.com"
+#  FIXED
+CLOUDFLARE_TUNNEL_URL = "https://stroke-conservative-orchestra-latex.trycloudflare.com"
 
 CAMERAS = {
     "cam1": {

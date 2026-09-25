@@ -439,7 +439,7 @@ CAMERA_PASSWORD = "Pratham@123"
 CAMERA_URL = f"http://{CAMERA_IP}:{CAMERA_PORT}/video"
 
 # YOUR ACTIVE LIVE CLOUDFLARE TUNNEL URL
-CLOUDFLARE_TUNNEL_URL = "https://inspector-charles-time-nations.trycloudflare.com/live"
+CLOUDFLARE_TUNNEL_URL = "https://significant-proud-reflects-lectures.trycloudflare.com/live"
 
 # ============================================================
 # CAMERA REGISTRY

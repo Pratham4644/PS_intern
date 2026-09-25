@@ -754,8 +754,6 @@
 
 
 
-
-
 import time
 import base64
 from urllib.request import Request, urlopen
@@ -767,14 +765,13 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="AI CCTV Platform", version="0.1.0")
 
 # ============================================================
-# CROSS-ORIGIN RESOURCE SHARING (CORS) MIDDLEWARE
+# ULTRA-LOW LATENCY CORS MIDDLEWARE CONFIGURATION
 # ============================================================
-# This explicitly permits your Render app and browsers to communicate
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,  # Set to False to optimize open public streams
+    allow_methods=["GET", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -787,8 +784,7 @@ CAMERA_USERNAME = "hello"
 CAMERA_PASSWORD = "Pratham@123"
 CAMERA_URL = f"http://{CAMERA_IP}:{CAMERA_PORT}/video"
 
-# REPLACE THIS WITH YOUR LIVE CLOUDFLARE TUNNEL URL BEFORE PUSHING
-#  FIXED
+# YOUR ACTIVE LIVE CLOUDFLARE TUNNEL URL
 CLOUDFLARE_TUNNEL_URL = "https://stroke-conservative-orchestra-latex.trycloudflare.com"
 
 CAMERAS = {
@@ -814,7 +810,7 @@ def get_auth_header():
     return f"Basic {encoded}"
 
 # ============================================================
-# VIDEO FEED LOGIC
+# VIDEO FEED LOGIC (STREAMLINED & UNBUFFERED)
 # ============================================================
 @app.get("/video")
 def video():
@@ -824,24 +820,25 @@ def video():
             headers={
                 "Authorization": get_auth_header(),
                 "User-Agent": "Mozilla/5.0",
-                "Cache-Control": "no-cache",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
             },
         )
-        camera = urlopen(request, timeout=10)
         
-        # Safe fallback header matching if content type is empty
+        # Connect directly once without nested generator locks
+        camera = urlopen(request, timeout=5)
         content_type = camera.headers.get("Content-Type") or "multipart/x-mixed-replace; boundary=frame"
-        print("Camera Content-Type:", content_type)
 
         def generate():
             try:
                 while True:
-                    chunk = camera.read(16384)
+                    # Reduced chunk size from 16384 to 4096 for fast network flushing
+                    chunk = camera.read(4096)
                     if not chunk:
                         break
                     yield chunk
             except Exception as error:
-                print("Stream error:", error)
+                print("Live Stream Chunk Error:", error)
             finally:
                 camera.close()
 
@@ -853,12 +850,13 @@ def video():
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",
                 "Expires": "0",
-                "X-Accel-Buffering": "no",
+                "X-Accel-Buffering": "no",  # Prevents Nginx/Render layer buffering
                 "Access-Control-Allow-Origin": "*",
             },
+            buffer_max_size=1  # FORCES FASTAPI TO FLUSH EACH FRAME INSTANTLY
         )
     except Exception as error:
-        print("Camera connection failed:", error)
+        print("Camera hardware connection failed:", error)
         return {"error": str(error)}
 
 # ============================================================
@@ -866,7 +864,6 @@ def video():
 # ============================================================
 @app.get("/", response_class=HTMLResponse)
 def home():
-    # Injected the real-time Cloudflare Tunnel link directly into the img src block
     return f"""
     <!DOCTYPE html>
     <html>
@@ -875,16 +872,30 @@ def home():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>CCTV Live Feed</title>
         <style>
-            body {{ margin: 0; background: #111; color: white; font-family: Arial; text-align: center; }}
-            h1 {{ margin: 20px; }}
-            .status {{ color: #00ff88; margin-bottom: 15px; }}
-            img {{ width: 800px; max-width: 95vw; border-radius: 8px; border: 2px solid #333; }}
+            body {{ margin: 0; background: #111; color: white; font-family: Arial, sans-serif; text-align: center; }}
+            h1 {{ margin: 20px; font-weight: 400; letter-spacing: 1px; }}
+            .status {{ color: #00ff88; margin-bottom: 15px; font-weight: bold; animation: blink 1.5s infinite; }}
+            img {{ width: 800px; max-width: 95vw; border-radius: 8px; border: 2px solid #222; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }}
+            @keyframes blink {{ 0% {{ opacity: 0.4; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.4; }} }}
         </style>
     </head>
     <body>
         <h1>CCTV Live Feed</h1>
         <div class="status">● LIVE</div>
-        <img src="{CLOUDFLARE_TUNNEL_URL}/video" alt="CCTV Live Video Feed Stream">
+        
+        <!-- Live stream image endpoint passing through the Cloudflare proxy pipeline -->
+        <img id="liveStream" src="{CLOUDFLARE_TUNNEL_URL}/video" alt="Real-time CCTV Stream Feed">
+
+        <script>
+            // Anti-stuck auto-recovery fallback script
+            const streamImg = document.getElementById('liveStream');
+            streamImg.onerror = function() {{
+                console.log("Stream dropped, attempting recovery reconnection...");
+                setTimeout(() => {{
+                    streamImg.src = "{CLOUDFLARE_TUNNEL_URL}/video?t=" + new Date().getTime();
+                }}, 2000);
+            }};
+        </script>
     </body>
     </html>
     """

@@ -432,10 +432,10 @@ app.add_middleware(
 # CAMERA HARDWARE CONFIGURATION
 # ============================================================
 # NOTE: If you still get a timeout, change this IP to match your camera's actual network IP
-CAMERA_IP = "192.168.1.9" 
-CAMERA_PORT = 8080
-CAMERA_USERNAME = "hello"
-CAMERA_PASSWORD = "Pratham@123"
+CAMERA_IP = "Enetr your IP" 
+CAMERA_PORT = 
+CAMERA_USERNAME = "Enetr user name"
+CAMERA_PASSWORD = "Enter password"
 CAMERA_URL = f"http://{CAMERA_IP}:{CAMERA_PORT}/video"
 
 # YOUR ACTIVE LIVE CLOUDFLARE TUNNEL URL
@@ -451,8 +451,8 @@ CAMERAS = {
         "status": "online",
         "streams": {
             "webrtc": f"{CLOUDFLARE_TUNNEL_URL}/video",  # Linked to your endpoint
-            "hls": "http://127.0.0",
-            "rtsp": "rtsp://127.0.0.1:8554/cam1"
+            "hls": "🤣🤣",
+            "rtsp": "Enetr ypur rtsp"
         },
         "ai": {
             "enabled": False,
